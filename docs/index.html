@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="Pix2NPHM: Learning to Regress NPHM Reconstructions From a Single Image">
+    <meta name="keywords" content="MonoNPHM, NPHM, ViT, Transformer, feed-forward-3dmm, morphable model, 3D reconstruction, Neural Fields, Virtual Avatars, Signed Distance Field, Deformation Field, 3D Scanning, Dataset">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pix2NPHM: Learning to Regress NPHM Reconstructions From a Single Image</title>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E0HR9YQK2K"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-E0HR9YQK2K');
+    </script>
+
+
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+    <link rel="stylesheet" href="./static/css/bulma.min.css">
+    <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <link rel="stylesheet" href="./static/css/index.css">
+
+    <style>
+		.render_wrapper {
+			position: relative;
+            height: 500px;
+         }
+        .render_wrapper_small {
+			position: relative;
+            height: 200px;
+         }
+		.render_div {
+			position: absolute;
+			top: 0px;
+			left: 0px;
+		}
+
+        #interpolation-image-wrapper-car{
+            text-align: center;
+        }
+        #interpolation-image-wrapper-chair{
+            text-align: center;
+        }
+        .nested-columns {
+            margin-bottom: 0 !important;
+        }
+
+        .image-overlay {
+            position: absolute;
+            top: 0px;              /* distance from top */
+            left: 0px;             /* distance from left */
+            padding: 4px;
+            background: rgba(100, 100, 100, 1.0); /* optional dark translucent background */
+            border-radius: 4px;     /* optional rounded corners */
+        }
+
+        /* Overlay image */
+        .image-overlay img {
+            width: 150px;           /* set the display size */
+            height: auto;
+            display: block;
+        }
+
+
+    </style>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script defer src="./static/js/fontawesome.all.min.js"></script>
+    <script src="./static/js/bulma-carousel.min.js"></script>
+    <script src="./static/js/bulma-slider.min.js"></script>
+    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    <script src="./static/js/index.js"></script>
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+    </script>
+    <script type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+</head>
+
+<body>
+
+    <section class="hero">
+        <div class="hero-body">
+            <div class="container is-max-desktop">
+                <div class="columns is-centered">
+                    <div class="column has-text-centered">
+                        <h1 class="title is-1 publication-title">Pix2NPHM: Learning to Regress NPHM Reconstructions From a Single Image</h1>
+
+                        <div class="is-size-5 publication-authors">
+                            <span class="author-block">
+                                <a href="https://simongiebenhain.github.io">Simon Giebenhain</a><sup>1</sup>,</span>
+                            <span class="author-block">
+                                <a href="https://tobias-kirschstein.github.io/">Tobias Kirschstein</a><sup>1</sup>,</span>
+                            <span class="author-block">
+                                <a href="https://nlml.github.io/">Liam Schoneveld</a><sup>2</sup>,
+                            </span>
+                            <span class="author-block">
+                                <a href="https://openreview.net/profile?id=~Davide_Davoli1">Davide Davoli</a><sup>3</sup>,
+                            </span>
+                            <span class="author-block">
+                                <a href="https://openreview.net/profile?id=~Zhe_Chen6">Zhe Chen</a><sup>2</sup>,
+                            </span>
+                            <span class="author-block">
+                                <a href="https://niessnerlab.org/members/matthias_niessner/profile.html">Matthias
+                                    Nießner</a><sup>1</sup>
+                            </span>
+                        </div>
+
+                        <div class="is-size-5 publication-authors">
+                            <span class="author-block"><sup>1</sup>Technical University of Munich,</span>
+                            <span class="author-block"><sup>2</sup>Woven by Toyota</span>
+                            <span class="author-block"><sup>3</sup>Toyota Motor Europe NV/SA</span>
+                        </div>
+
+                        <div class="column has-text-centered">
+                            <div class="publication-links">
+                                <!-- PDF Link. -->
+                                <span class="link-block">
+                                    <a href="static/Pix2NPHM.pdf"
+                                        class="external-link button is-normal is-rounded is-dark">
+                                        <span class="icon">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </span>
+                                        <span>Paper</span>
+                                    </a>
+                                </span>
+                                <span class="link-block">
+                                    <a class="external-link button is-normal is-rounded is-dark" href="TODO">
+                                        <span class="icon">
+                                            <i class="ai ai-arxiv"></i>
+                                        </span>
+                                        <span>arXiv</span>
+                                    </a>
+                                </span>
+                                <!-- Video Link. -->
+                                <span class="link-block">
+                                    <a href="TODO"
+                                        class="external-link button is-normal is-rounded is-dark">
+                                        <span class="icon">
+                                            <svg class="svg-inline--fa fa-youtube fa-w-18" aria-hidden="true"
+                                                focusable="false" data-prefix="fab" data-icon="youtube" role="img"
+                                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"
+                                                data-fa-i2svg="">
+                                                <path fill="currentColor"
+                                                    d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.5 48.284 47.821C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.321 42.003-24.171 48.284-47.821 11.412-42.867 11.412-132.305 11.412-132.305s0-89.438-11.412-132.305zm-317.51 213.508V175.185l142.739 81.205-142.739 81.201z">
+                                                </path>
+                                            </svg><!-- <i class="fab fa-youtube"></i> Font Awesome fontawesome.com -->
+                                        </span>
+                                        <span>Video</span>
+                                    </a>
+                                </span>
+
+
+                                <!-- Github Link. -->
+                                <span class="link-block">
+                                    <a class="external-link button is-normal is-rounded is-dark"><!-- <i class="fab fa-youtube"></i> Font Awesome fontawesome.com -->
+                                        <span class="icon">
+                                            <i class="fab fa-github"></i>
+                                        </span>
+                                        <span>Code (coming soon)</span>
+                                    </a>
+                                </span>
+                                <span class="link-block"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero teaser">
+        <div class="container is-max-desktop">
+            <div class="hero-body">
+                <img src="./static/teaser/teaser.jpg" height="150%" />
+                <h2 class=" subtitle has-text-centered" style="padding-top: 10px">
+                    <p align="left">
+                    Pix2NPHM is a combination of a feed-forward transformer for MonoNPHM parameter prediction from a single image, that is further refined using optimization against Pixel3DMM normal maps.
+                    </p>
+                </h2>
+            </div>
+        </div>
+    </section>
+
+
+
+
+
+<!-- Result Overlay Videos-->
+<section class="hero is-light is-small">
+  <div class="hero-body">
+    <div style="text-align: center;" >
+      <p style="font-size: 28px;">
+          Tracking Results of <b>Pix2NPHM</b>.
+      </p>
+      <p>
+          From left to right: input, overlay, reconstrcutions.
+      </p>
+
+  </div>
+      <div id="results-container" class="container results-container">
+      <div id="results-carousel" class="carousel results-carousel">
+        <div class="item item-shiba">
+          <video poster="" id="shiba" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/compressed_vfhq_Clip+AuI55Kk5tgw+P0+C1+F3481-3760.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-fullbody">
+          <video poster="" id="fullbody" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/compressed_vfhq_Clip+6SNHQfBQ6yk+P0+C1+F22194-22322.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-blueshirt">
+          <video poster="" id="blueshirt" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/compressed_celebvhq_245ce2ba6b1cb04ea57516696bc6dcb8.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+          <div class="item item-mask">
+          <video poster="" id="mask" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/compressed_vfhq_Clip+x9klsDwglJM+P0+C1+F3802-3955.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-mask">
+          <video poster="" id="mask" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/compressed_vfhq_Clip+floa2dStBxA+P2+C1+F5423-5539.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+          <div class="item item-mask">
+          <video poster="" id="mask" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/compressed_vfhq_Clip+88B87CPb6qo+P0+C0+F10741-10848.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+
+
+
+    <section class="section">
+        <div class="container is-max-desktop">
+            <!-- Abstract. -->
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <h2 class="title is-3">Abstract</h2>
+                    <div class="content has-text-justified">
+                        <p margin="0">
+                            Neural Parametric Head Models (NPHMs) are a recent advancement over mesh-based 3d morphable models (3DMMs) to facilitate high-fidelity geometric detail.
+                            However, fitting NPHMs to visual inputs is notoriously challenging due to the expressive nature of their underlying latent space.
+                            To this end, we propose Pix2NPHM, a vision transformer (ViT) network that directly regresses NPHM parameters, given a single image as input.
+                            Compared to existing approaches, the neural parametric space allows our method to reconstruct more recognizable facial geometry and accurate facial expressions.
+                            For broad generalization, we exploit domain-specific ViTs as backbones, which are pretrained on geometric prediction tasks.
+                            We train Pix2NPHM on a mixture of 3D data, including a total of over 100K NPHM registrations that enable direct supervision in SDF space,
+                            and large-scale 2D video datasets, for which normal estimates serve as pseudo ground truth geometry.
+                            Pix2NPHM not only allows for 3D reconstructions at interactive frame rates,
+                            it is also possible to improve geometric fidelity by a subsequent inference-time optimization against estimated surface normals and canonical point maps.
+                            As a result, we achieve unprecedented face reconstruction quality that can run at scale on in-the-wild data.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paper video. -->
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <h2 class="title is-3">Video</h2>
+                    <div class="publication-video">
+                        <!-- <iframe src="https://www.youtube.com/embed/n-wjaC3UIeE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>-->
+                        <iframe src="TODO" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+            <!--/ Paper video. -->
+        </div>
+    </section>
+
+
+    <section class="hero is-light is-small">
+
+    <div class="hero-body">
+        <div style="text-align: center;" >
+              <p style="font-size: 28px;">
+                  Results Comparisons NeRSemble.
+              </p>
+              <p>
+                  We show comparisons against two recent SotA FLAME-based reconstruction models,
+                  SHeaP (feed-forward) and Pixel3DMM (optimization-based).
+             </p>
+
+
+          </div>
+
+    <div id="results-container" class="container">
+      <div id="results-carousel" class="carousel results-carousel">
+        <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_comp1.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_comp2.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_comp3.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+          <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_comp4.mp4"
+                    type="video/mp4">
+          </video>
+      </div>
+
+      </div>
+    </div>
+    </div>
+</section>
+
+
+    <div style="text-align: center;" >
+          <p style="font-size: 28px;">
+              Reconstructed Geometry.
+          </p>
+
+      </div>
+    <div class="container">
+        <div id="results-carousel-mesh" class="carouselmesh results-carousel-mesh">
+
+            <div class="item item-steve render_wrapper">
+
+                <div id="mesh_00995" class="render_div"></div>
+                <div class="image-overlay">
+                    <img src="./static/input_images/00995.jpg" alt="input image"/>
+                </div>
+            </div>
+            <div class="item item-steve render_wrapper">
+
+                <div id="mesh_02628" class="render_div"></div>
+                <div class="image-overlay">
+                    <img src="./static/input_images/02628.jpg" alt="input image"/>
+                </div>
+            </div>
+            <div class="item item-steve render_wrapper">
+
+                <div id="mesh_02879" class="render_div"></div>
+                <div class="image-overlay">
+                    <img src="./static/input_images/02879.jpg" alt="input image"/>
+                </div>
+            </div><div class="item item-steve render_wrapper">
+
+                <div id="mesh_02811" class="render_div"></div>
+                <div class="image-overlay">
+                    <img src="./static/input_images/02811.jpg" alt="input image"/>
+                </div>
+            </div><div class="item item-steve render_wrapper">
+
+                <div id="mesh_01908" class="render_div"></div>
+                <div class="image-overlay">
+                    <img src="./static/input_images/01908.jpg" alt="input image"/>
+                </div>
+            </div><div class="item item-steve render_wrapper">
+
+                <div id="mesh_01953" class="render_div"></div>
+                <div class="image-overlay">
+                    <img src="./static/input_images/01953.jpg" alt="input image"/>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center;">Press <b>R</b> to reset views. Press <b>S</b> to stop/start rotation. </div>
+    </div>
+
+
+
+
+
+    <section class="hero is-light is-small">
+
+    <div class="hero-body">
+        <div style="text-align: center;" >
+              <p style="font-size: 28px;">
+                  Tracking Comparisons.
+              </p>
+            <p>
+                Comparisons of Sota tracker Pixel3DMM against our feed-forward tracking predictions.
+                Our NPHM-based feed-forward predictor  predictions reaches higher fidelity than a FLAME-based counterpart.
+            </p>
+
+          </div>
+    <div id="results-container" class="container">
+      <div id="results-carousel" class="carousel results-carousel">
+        <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_track4.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_track6.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_track2.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+          <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_track1.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+          <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_track3.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+          <div class="item item-chair-tp">
+          <video poster="" id="chair-tp" autoplay controls muted loop playsinline height="100%">
+            <source src="./static/video_comparisons/compressed_track5.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+    </div>
+</section>
+
+    <section class="section">
+        <div class="container is-max-desktop">
+
+    <!-- Overview. -->
+    <div class="columns is-centered" style="margin-top: 15px">
+        <div class="column is-full-width">
+            <h2 class="title is-3">Method Overview</h2>
+            <img src="./static/teaser/overview.jpg"/>
+            <div class="content has-text-justified" style="padding-top: 15px">
+                <p><b>1.</b> The input image is encoded using geometrically pretrained ViTs, which remain frozen during the training of Pix2NPHM. The backbones are pretrained using pixel-aligned surface Normal and position prediction tasks, similar to Pixel3DMM.</p>
+                <p><b>2.</b> The resulting token sequences is extended with classification tokens for identity (1 global token and 65 local tokens) and expression (1 token).</p>
+                <p><b>3.</b> After several transformer layers, the classifcation tokens are read-out for NPHM parameter prediction using a small MLP-head. The implicit surface can be rendered, or extracted using marching cubes.</p>
+                <p><b>4.</b> For 3D datasets we supervise using the differences between induces SDF-functions between predicted and g.t. NPHM prarameters.</p>
+                <p><b>5.</b> For 2D datasets, we use Pixel3DMM normal estimates as pseudo g.t. supervision against normal renderings.</p>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="columns is-centered">
+        <div class="column is-full-width">
+            <h2 class="title is-3">Related Links</h2>
+
+            <div class="content has-text-justified">
+
+
+                <p>
+                    <b>FFWD-FLAME prediction:</b> <a href="https://nlml.github.io/sheap/">SHeaP</a>,
+                    <a href="https://zielon.github.io/mica/">MICA</a>,
+                    <a href="https://emoca.is.tue.mpg.de">EMOCA</a> and
+                    <a href="https://openaccess.thecvf.com/content/ICCV2023/papers/Zhang_Accurate_3D_Face_Reconstruction_with_Facial_Component_Tokens_ICCV_2023_paper.pdf">TokenFace</a>.
+                </p>
+                <p>
+                    <b>Optimization-based FLAME fitting:</b> <a href="https://simongiebenhain.github.io/pixel3dmm/">Pixel3DMM</a>,
+                    <a href="https://felixtaubner.github.io/flowface/">FlowFace</a>  and
+                    <a href="https://github.com/Zielon/metrical-tracker">MetricalTracker</a>.
+                </p>
+                <p>
+                    <b>Foundations on NPHMs</b>: <a href="https://simongiebenhain.github.io/MonoNPHM/">MonoNPHM</a> and <a href="https://simongiebenhain.github.io/NPHM/">NPHM</a>.
+                </p>
+                <p>
+                    <b>Similar neural 3DMMs</b>: <a href="https://arxiv.org/abs/2510.10793">ImHead</a> and <a href="https://arxiv.org/abs/2203.14510">ImFace</a>.
+                </p>
+                <p>
+                    <b>Avatars based on NPHM:</b> <a href="https://tobias-kirschstein.github.io/diffusion-avatars/">DiffusionAvatar</a>,
+                    <a href="https://simongiebenhain.github.io/NPGA/">NPGA</a>,
+                    <a href="https://shivangi-aneja.github.io/projects/facetalk/">FaceTalk</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+    </div>
+    </section>
+
+
+
+
+
+
+    <section class="section" id="BibTeX">
+        <div class="container is-max-desktop content">
+            <h2 class="title">BibTeX</h2>
+            <pre>
+<code>@misc{giebenhain2025pix2nphm,
+title={Pix2NPHM: Learning to Regress NPHM Reconstructions From a Single Image},
+author={Simon Giebenhain and Tobias Kirschstein and Liam Schoneveld and  Davide Davoli and  Zhe Chen and Matthias Nie{\ss}ner},
+year={2025},
+url={https://arxiv.org/abs/TODO},
+}
+
+
+</code></pre>
+        </div>
+    </section>
+
+
+    <footer class="footer">
+        <div class="container">
+            <div class="content has-text-centered">
+                <a class="icon-link" href="static/nphm.pdf">
+                    <i class="fas fa-file-pdf"></i>
+                </a>
+                <a class="icon-link" href="https://github.com/SimonGiebenhain" class="external-link" disabled>
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+            <div class="columns is-centered">
+                <div class="column is-8">
+                    <div class="content">
+                        <p style="text-align:center">
+                            Source code borrowed from <a href="https://keunhong.com/">Keunhong Park</a>'s
+                            <a href="https://nerfies.github.io/">Nerfies website</a> and especially
+                            <a href="https://niessnerlab.org/members/yawar_siddiqui/profile.html">Yawar Siddiqui's</a> adoption for
+                            <a href="https://nihalsid.github.io/texturify//">Texturify</a>.
+                        </p>
+                        <p style="text-align:center">
+                            Please contact <a href="https://niessnerlab.org/members/simon_giebenhain/profile.html">Simon Giebenhain</a> for feedback and questions.
+                        </p>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+
+
+    <!--import { PLYLoader } from './js/PLYLoader.js'; -->
+    <!-- Import maps polyfill         import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader'
+-->
+    <!-- Remove this when import maps will be widely supported -->
+    <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./js/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+
+        import * as THREE from 'three';
+        import { PLYLoader } from './js/PLYLoader.js';
+        import { OrbitControls } from './js/OrbitControls.js'
+        let div_to_scene = {
+            "mesh_00995": {
+                "geo": null,
+                "clock": null,
+            },
+            "mesh_02628": {
+                "geo": null,
+                "clock": null,
+
+            },
+            "mesh_02879": {
+                "geo": null,
+                                "clock": null,
+
+            },
+            "mesh_02811": {
+                "geo": null,
+                                "clock": null,
+
+            },
+            "mesh_01908": {
+                "geo": null,
+                                "clock": null,
+
+            },
+            "mesh_01953": {
+                "geo": null,
+                                "clock": null,
+
+            },
+        }
+
+        let mouse_button_down = false;
+        let list_of_orbit_controls = []
+        let style_camera = null;
+        let render_colors = true;
+        let style_id = "0"
+
+        function setup_camera(div_name){
+            let container = document.getElementById(div_name);
+            let width = container.parentElement.clientWidth;
+            let height = container.parentElement.clientHeight;
+            console.log(width, height)
+            let camera = new THREE.PerspectiveCamera( 35, width / height, 0.1, 50 );
+            //let camera_init_position = new THREE.Vector3( -1.5, 0.35, 1.2 );
+            let camera_init_position = new THREE.Vector3( 0., 0., 1.2 );
+            camera_init_position = camera_init_position.multiplyScalar(1.5)
+            //if (div_name.includes("style")) {
+            //    camera_init_position = camera_init_position.multiplyScalar(1.25)
+            //}
+            //else if (div_name.includes("style")) {
+            //    camera_init_position = camera_init_position.multiplyScalar(1.25)
+            //}
+            camera.position.set(camera_init_position.x, camera_init_position.y, camera_init_position.z);
+            return camera;
+        }
+
+        function setup_render_divs(div_name, mesh_path){
+            let camera = setup_camera(div_name)
+            let orbit_control = create_render_div(camera, div_name, mesh_path)
+            list_of_orbit_controls.push(orbit_control)
+        }
+
+        function create_render_div(camera, div_id, mesh_path) {
+            let container;
+            let renderer, controls;
+
+
+
+            init();
+
+            function init() {
+
+                container = document.getElementById(div_id);
+                let width = container.parentElement.clientWidth;
+                let height = container.parentElement.clientHeight;
+
+
+                div_to_scene[div_id]["geo"] = new THREE.Scene();
+
+
+                //const loader2 = new THREE.TextureLoader();
+                //loader2.load('./static/teaser/input.jpg' , function(texture)
+                //{
+                // div_to_scene[div_id]["geo"].background = texture;
+                //});
+                div_to_scene[div_id]["geo"].background = new THREE.Color( 0xffffff );
+                //var axesHelper = new THREE.AxesHelper( 5 );
+                //div_to_scene[div_id]["geo"].add( axesHelper );
+
+                // PLY file
+
+                const loader = new PLYLoader();
+                loader.load( mesh_path, function ( geometry ) {
+
+                    geometry.computeVertexNormals();
+                    //let material_geo = new THREE.MeshStandardMaterial( { color: 0x444444, flatShading: true, roughness: 0.5, metalness: 0.3 } )
+                    //let material_geo = new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false} )
+                    const material_geo = new THREE.MeshPhongMaterial( {
+                                                color: 0xCCE6FF,
+                                                specular: 0x222222,
+                                                shininess: 25,} );
+
+                    const mesh_geo = new THREE.Mesh( geometry, material_geo );
+                    mesh_geo.name = 'mesh'
+                    //mesh_geo.castShadow = true;
+				    //mesh_geo.receiveShadow = true;
+                    div_to_scene[div_id]["geo"].add( mesh_geo );
+                    div_to_scene[div_id]["back"].add( backgroundMesh );
+                    const clock = new THREE.Clock();
+                    div_to_scene[div_id]["clock"] = clock;
+
+
+                }, (xhr) => {
+                    console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+                }, (error) => {
+                    console.log(error)
+                }
+                );
+
+                // lights
+
+                //div_to_scene[div_id]["geo"].add( new THREE.HemisphereLight( 0x333333, 0x222222) );
+                //div_to_scene[div_id]["geo"].add(new THREE.AmbientLight( 0x333333, 1) );
+                //const directionalLight = new THREE.DirectionalLight( 0xffffff, 1. );
+                //directionalLight.position.set( 1, 1, 1 );
+                //div_to_scene[div_id]["geo"].add( directionalLight );
+                //addShadowedLight(div_to_scene[div_id]["geo"], -5, -5, 5, 0xffffff, 1. );
+                //addShadowedLight(div_to_scene[div_id]["geo"], 1, 1, 1, 0xffffff, 1.35 );
+                //addShadowedLight(div_to_scene[div_id]["geo"], -1, 1, -1, 0xffffff, 1.35 );
+                //addShadowedLight(div_to_scene[div_id]["geo"], 0, -2, 1, 0xffffff, 0.5 );
+                //addShadowedLight(div_to_scene[div_id]["geo"],  0, -1, 2, 0xffffff, 0.5 );
+
+                add_lights(div_to_scene[div_id]["geo"])
+
+
+
+
+                // renderer
+
+                renderer = new THREE.WebGLRenderer( { antialias: true } );
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( width, height);
+                renderer.outputEncoding = THREE.sRGBEncoding;
+
+                //renderer.shadowMap.enabled = true;
+
+                container.appendChild( renderer.domElement );
+
+                controls = new OrbitControls(camera, renderer.domElement)
+                controls.enableDamping = false
+                controls.autoRotate = false
+
+
+                // resize
+
+                window.addEventListener( 'resize', onWindowResize );
+                //controls.addEventListener('change', onChange)
+                controls.addEventListener('start', function(){
+                  //clearTimeout(autorotateTimeout);
+                  controls.autoRotate = false;
+                });
+
+                // restart autorotate after the last interaction & an idle time has passed
+                //this.controls.addEventListener('end', function(){
+                //  autorotateTimeout = setTimeout(function(){
+                //    controls.autoRotate = true;
+                //  }, 1000);
+                //});
+                // Convert degrees to radians
+                // Convert degrees to radians
+                div_to_scene[div_id]["camera"] = camera;
+                div_to_scene[div_id]["renderer"] = renderer;
+                div_to_scene[div_id]["controls"] = controls;
+
+
+
+
+        }
+            function onWindowResize() {
+                let width = container.clientWidth;
+                let height = container.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize( width, height );
+            }
+
+
+
+
+            function render(div_ID) {
+                //renderer.clear()
+                //renderer.render(div_to_scene[div_id]["background"], camera);
+                renderer.render( div_to_scene[div_ID]["geo"], camera );
+                //renderer.render(div_to_scene[div_id]["background"], camera);
+                controls.update();
+            }
+
+            return controls;
+        }
+
+        function add_lights(scene) {
+                scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ,0.05) );
+				const spotLight = new THREE.SpotLight( 0xffffff, 0.5 );
+				spotLight.position.set( 0.0, 0.5, 1 );
+				const spotLight2 = new THREE.SpotLight( 0xffffff, 0.25 );
+			    spotLight2.position.set( -2, 0.3, -0.2 );
+				const spotLight3 = new THREE.SpotLight( 0xffffff, 0.25 );
+				spotLight3.position.set( 2, -0.3, 0.2 );
+				const spotLight4 = new THREE.SpotLight( 0xffffff, 0.25 );
+				spotLight4.position.set( 0.0, 1, -2 );
+				const spotLight5 = new THREE.SpotLight( 0xffffff, 0.05 );
+				spotLight5.position.set( 0, -2.5, -1 );
+				////spotLight.position.multiplyScalar( 700 );
+				scene.add( spotLight );
+				scene.add( spotLight2 );
+				scene.add( spotLight3 );
+				scene.add( spotLight4 );
+				scene.add( spotLight5 );
+
+
+        }
+
+        function add_lightsBACKUP(scene) {
+                scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ,0.05) );
+				const spotLight = new THREE.SpotLight( 0xffffff, 0.6 );
+				spotLight.position.set( 0.5, 0.5, 1 );
+				const spotLight2 = new THREE.SpotLight( 0xffffff, 0.3 );
+				spotLight2.position.set( -0.75, 0.2, 0 );
+				const spotLight3 = new THREE.SpotLight( 0xffffff, 0.3 );
+				spotLight3.position.set( -0.5, 0, 1 );
+				const spotLight4 = new THREE.SpotLight( 0xffffff, 0.3 );
+				spotLight4.position.set( 0.5, 0.5, -1 );
+				const spotLight5 = new THREE.SpotLight( 0xffffff, 0.15 );
+				spotLight5.position.set( 0, -1.5, 0 );
+				////spotLight.position.multiplyScalar( 700 );
+				scene.add( spotLight );
+				scene.add( spotLight2 );
+				//div_to_scene[div_id]["geo"].add( spotLight3 );
+				scene.add( spotLight4 );
+				scene.add( spotLight5 );
+        }
+
+
+        function addShadowedLight(scene, x, y, z, color, intensity ) {
+
+            const directionalLight = new THREE.DirectionalLight( color, intensity );
+            directionalLight.position.set( x, y, z );
+            scene.add( directionalLight );
+
+            directionalLight.castShadow = true;
+
+            const d = 1;
+            directionalLight.shadow.camera.left = - d;
+            directionalLight.shadow.camera.right = d;
+            directionalLight.shadow.camera.top = d;
+            directionalLight.shadow.camera.bottom = - d;
+
+            directionalLight.shadow.camera.near = 1;
+            directionalLight.shadow.camera.far = 4;
+
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+
+            directionalLight.shadow.bias = - 0.001;
+
+        }
+
+        document.addEventListener('keydown', logKey);
+
+        function logKey(evt) {
+            if (evt.keyCode === 71 && !mouse_button_down) {
+                switch_geometry()
+            }
+            if (evt.keyCode === 82 && !mouse_button_down) {
+                reset_orbit_controls()
+            }
+            if (evt.keyCode === 83 && !mouse_button_down) {
+                stop_rotation()
+            }
+        }
+
+        function switch_geometry() {
+            render_colors = !render_colors
+        }
+
+        function reset_orbit_controls() {
+            list_of_orbit_controls.forEach(oc => {
+                oc.reset()
+                oc.autoRotate = false
+            })
+        }
+        let perform_rot = true;
+        function stop_rotation() {
+            perform_rot = !perform_rot;
+        }
+
+        const minRot = -0.7;
+        const maxRot = 0.7;
+
+        // Rotation speed (radians per second)
+        const rotSpeed = 0.005;
+
+        // Internal direction flag
+        let rotDirection = 1;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            for (const div_id in div_to_scene) {
+                const entry = div_to_scene[div_id];
+
+                if (!entry.geo) continue;  // skip before mesh loads
+
+                const mesh = entry.geo.getObjectByName("mesh");
+                if (perform_rot) {
+                    if (mesh) {
+                        mesh.rotation.y += rotDirection * 0.005;
+                        if (mesh.rotation.y > maxRot) {
+                            mesh.rotation.y = maxRot;
+                            rotDirection = -1;
+                        }
+                        if (mesh.rotation.y < minRot) {
+                            mesh.rotation.y = minRot;
+                            rotDirection = 1;
+                        }
+                    }
+                }
+
+                entry.controls.update();
+                entry.renderer.render(entry.geo, entry.camera);
+            }
+        }
+
+        animate();
+
+        document.body.onmousedown = function(evt) {
+            if (evt.button === 0)
+                mouse_button_down = true
+        }
+        document.body.onmouseup = function(evt) {
+            if (evt.button === 0)
+                mouse_button_down = false
+        }
+
+        window.onload = function() {
+            let slider = document.getElementsByClassName("slider")[0]
+            slider.removeAttribute("tabIndex")
+            // slider.addEventListener("mouseout", reset_orbit_controls);
+            setup_render_divs("mesh_00995", './static/input_images/00995.ply')
+            setup_render_divs("mesh_02628", './static/input_images/02628.ply')
+            setup_render_divs("mesh_02879", './static/input_images/02879.ply')
+            setup_render_divs("mesh_02811", './static/input_images/02811.ply')
+            setup_render_divs("mesh_01908", './static/input_images/01908.ply')
+            setup_render_divs("mesh_01953", './static/input_images/01953.ply')
+            //setup_render_divs("mesh_chair_2", './models/simon_508_s5.ply')
+            //setup_render_divs("mesh_chair_3", './models/simon_510_s3.ply')
+            //setup_render_divs("mesh_chair_4", './models/simon_509_s4.ply')
+            //setup_render_divs("mesh_chair_5", './models/simon_511_s5.ply')
+        };
+
+    </script>
+</body>
+
+</html>
+
